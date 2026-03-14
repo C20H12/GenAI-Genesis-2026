@@ -8,6 +8,7 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"net/url"
 	"os"
 	"strings"
 	"sync"
@@ -43,6 +44,16 @@ func initFraudDB() {
 		)`)
 		if err != nil {
 			slog.Error("fraud: create table", "error", err)
+		}
+
+		_, err = fraudDB.Exec(`CREATE TABLE IF NOT EXISTS blacklist (
+			domain     TEXT PRIMARY KEY,
+			score      INTEGER,
+			reason     TEXT,
+			created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+		)`)
+		if err != nil {
+			slog.Error("fraud: create blacklist table", "error", err)
 		}
 	})
 }
@@ -237,39 +248,74 @@ func callFraudLLM(url, text string) (*fraudResult, error) {
 // ---- Public API ----
 
 // AnalyzeFraud kicks off an async fraud analysis. It does NOT block the caller.
-func AnalyzeFraud(url, method, htmlBody, clientIP, remoteIP string) {
+func AnalyzeFraud(reqURL, method, htmlBody, clientIP, remoteIP string) {
 	initFraudDB()
 
 	go func() {
-		slog.Info("fraud: start", "url", url, "method", method)
+		slog.Info("fraud: start", "url", reqURL, "method", method)
 
 		text := extractText([]byte(htmlBody))
 		if len(strings.TrimSpace(text)) == 0 {
-			slog.Info("fraud: end", "url", url, "note", "empty text, skipped")
+			slog.Info("fraud: end", "url", reqURL, "note", "empty text, skipped")
 			return
 		}
 
-		result, err := callFraudLLM(url, text)
+		result, err := callFraudLLM(reqURL, text)
 		if err != nil {
-			slog.Error("fraud: end", "url", url, "error", err)
+			slog.Error("fraud: end", "url", reqURL, "error", err)
 			return
 		}
 
-		slog.Info("fraud: result", "url", url, "score", result.Score, "reason", result.Reason)
+		slog.Info("fraud: result", "url", reqURL, "score", result.Score, "reason", result.Reason)
 
 		if fraudDB == nil {
-			slog.Warn("fraud: end", "url", url, "note", "db not initialized, skipping insert")
+			slog.Warn("fraud: end", "url", reqURL, "note", "db not initialized, skipping insert")
 			return
 		}
 
 		_, err = fraudDB.Exec(
 			`INSERT INTO fraud_results (url, method, score, reason, client_ip, remote_ip) VALUES (?, ?, ?, ?, ?, ?)`,
-			url, method, result.Score, result.Reason, clientIP, remoteIP,
+			reqURL, method, result.Score, result.Reason, clientIP, remoteIP,
 		)
 		if err != nil {
 			slog.Error("fraud: insert", "error", err)
 		}
 
-		slog.Info("fraud: end", "url", url, "score", result.Score)
+		if result.Score >= 65 {
+			if parsedURL, err := url.Parse(reqURL); err == nil {
+				domain := parsedURL.Hostname()
+				if domain != "" {
+					_, err = fraudDB.Exec(
+						`INSERT OR REPLACE INTO blacklist (domain, score, reason) VALUES (?, ?, ?)`,
+						domain, result.Score, result.Reason,
+					)
+					if err != nil {
+						slog.Error("fraud: insert blacklist", "domain", domain, "error", err)
+					} else {
+						slog.Info("fraud: domain blacklisted", "domain", domain, "score", result.Score)
+					}
+				}
+			}
+		}
+
+		slog.Info("fraud: end", "url", reqURL, "score", result.Score)
 	}()
+}
+
+// IsFraudHost checks if a domain is currently in the blacklist
+func IsFraudHost(domain string) bool {
+	initFraudDB()
+	if fraudDB == nil {
+		return false
+	}
+
+	var score int
+	err := fraudDB.QueryRow(`SELECT score FROM blacklist WHERE domain = ?`, domain).Scan(&score)
+	if err == sql.ErrNoRows {
+		return false
+	} else if err != nil {
+		slog.Error("fraud: check blacklist", "domain", domain, "error", err)
+		return false
+	}
+	return true
 }

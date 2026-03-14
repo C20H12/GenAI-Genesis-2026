@@ -22,6 +22,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	_ "embed"
 )
 
 var (
@@ -29,6 +31,9 @@ var (
 	caKey   *ecdsa.PrivateKey
 	certsMu sync.Map // map[string]*tls.Certificate
 )
+
+//go:embed blocked.webp
+var blockedImage []byte
 
 // ---- CA certificate management ----
 
@@ -201,6 +206,22 @@ func mitmRelay(clientConn net.Conn, destAddr, clientIP, remoteIP string) {
 			if err != io.EOF {
 				slog.Error("read request", "error", err)
 			}
+			return
+		}
+
+		if IsFraudHost(host) {
+			slog.Warn("mitm: blocking request to fraud domain", "host", host)
+			resp := &http.Response{
+				StatusCode: http.StatusForbidden,
+				ProtoMajor: 1,
+				ProtoMinor: 1,
+				Header: http.Header{
+					"Content-Type": []string{"image/webp"},
+				},
+				Body:          io.NopCloser(bytes.NewReader(blockedImage)),
+				ContentLength: int64(len(blockedImage)),
+			}
+			resp.Write(tlsClientConn)
 			return
 		}
 
