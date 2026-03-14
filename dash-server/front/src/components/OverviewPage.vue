@@ -15,10 +15,10 @@ const loadError = ref("");
 
 const parseMetricNumber = (value: string) => Number(value.replace(/,/g, ""));
 
-const percentage = (value: number, total: number) => {
-  if (total === 0) return "0.0";
-  return ((value / total) * 100).toFixed(1);
-};
+// const percentage = (value: number, total: number) => {
+//   if (total === 0) return "0.0";
+//   return ((value / total) * 100).toFixed(1);
+// };
 
 onMounted(async () => {
   try {

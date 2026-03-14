@@ -106,6 +106,10 @@ const deleteEntry = async () => {
     isDeleting.value = false
   }
 }
+
+const formatTime = (t: string) => {
+  return new Date(t).toUTCString();
+}
 </script>
 
 <template>
@@ -126,7 +130,11 @@ const deleteEntry = async () => {
           <Column field="id" header="Entry" />
           <Column field="destination" header="Destination" />
           <Column field="reason" header="Reason" />
-          <Column field="blockedAt" header="Blocked At" />
+          <Column field="blockedAt" header="Blocked At">
+            <template #body="slotProps">
+              {{ formatTime(slotProps.data.blockedAt) }}
+            </template>
+          </Column>
           <Column header="Manage" style="width: 9rem">
             <template #body="slotProps">
               <Button
