@@ -22,8 +22,6 @@ import (
 	"strings"
 	"sync"
 	"time"
-
-	_ "embed"
 )
 
 var (
@@ -31,9 +29,6 @@ var (
 	caKey   *ecdsa.PrivateKey
 	certsMu sync.Map // map[string]*tls.Certificate
 )
-
-//go:embed blocked.webp
-var blockedImage []byte
 
 // ---- CA certificate management ----
 
@@ -209,17 +204,42 @@ func mitmRelay(clientConn net.Conn, destAddr, clientIP, remoteIP string) {
 			return
 		}
 
-		if IsFraudHost(host) {
+		if isBlocked, score, reason := IsFraudHost(host); isBlocked {
 			slog.Warn("mitm: blocking request to fraud domain", "host", host)
+			
+			htmlContent := fmt.Sprintf(`<!DOCTYPE html>
+<html>
+<head>
+<title>Access Blocked</title>
+<style>
+body { font-family: sans-serif; text-align: center; margin-top: 50px; background-color: #fce4e4; color: #cc0000; }
+.container { background: white; padding: 40px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); display: inline-block; max-width: 600px; }
+h1 { margin-top: 0; }
+.details { text-align: left; background: #f9f9f9; padding: 20px; border-radius: 4px; color: #333; margin-top: 20px; font-size: 14px; }
+</style>
+</head>
+<body>
+<div class="container">
+	<h1>🚫 Access Blocked</h1>
+	<p>This domain has been identified as a security risk and is blocked by GenAI Genesis.</p>
+	<div class="details">
+		<p><strong>Domain:</strong> %s</p>
+		<p><strong>Fraud Score:</strong> %d</p>
+		<p><strong>Reason:</strong> %s</p>
+	</div>
+</div>
+</body>
+</html>`, host, score, reason)
+
 			resp := &http.Response{
 				StatusCode: http.StatusForbidden,
 				ProtoMajor: 1,
 				ProtoMinor: 1,
 				Header: http.Header{
-					"Content-Type": []string{"image/webp"},
+					"Content-Type": []string{"text/html; charset=utf-8"},
 				},
-				Body:          io.NopCloser(bytes.NewReader(blockedImage)),
-				ContentLength: int64(len(blockedImage)),
+				Body:          io.NopCloser(strings.NewReader(htmlContent)),
+				ContentLength: int64(len(htmlContent)),
 			}
 			resp.Write(tlsClientConn)
 			return

@@ -311,19 +311,20 @@ func AnalyzeFraud(reqURL, method, htmlBody, clientIP, remoteIP string) {
 }
 
 // IsFraudHost checks if a domain is currently in the blacklist
-func IsFraudHost(domain string) bool {
+func IsFraudHost(domain string) (bool, int, string) {
 	initFraudDB()
 	if fraudDB == nil {
-		return false
+		return false, 0, ""
 	}
 
 	var score int
-	err := fraudDB.QueryRow(`SELECT score FROM blacklist WHERE domain = ?`, domain).Scan(&score)
+	var reason string
+	err := fraudDB.QueryRow(`SELECT score, reason FROM blacklist WHERE domain = ?`, domain).Scan(&score, &reason)
 	if err == sql.ErrNoRows {
-		return false
+		return false, 0, ""
 	} else if err != nil {
 		slog.Error("fraud: check blacklist", "domain", domain, "error", err)
-		return false
+		return false, 0, ""
 	}
-	return true
+	return true, score, reason
 }
