@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	_ "embed"
+	"encoding/base64"
 	"log/slog"
 	"net"
 	"net/http"
@@ -22,6 +23,10 @@ var installCAHTML []byte
 func main() {
 	loadEnv(".env")
 	loadOrCreateCA("ca.crt", "ca.key")
+
+	// encode blocked.webp to base64
+	blockedImageBase64 = base64.StdEncoding.EncodeToString(blockedImage)
+	blockedImageBase64 = "data:image/webp;base64," + blockedImageBase64
 
 	// Listen with TPROXY
 	lc := net.ListenConfig{

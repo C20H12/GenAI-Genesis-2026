@@ -22,6 +22,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	_ "embed"
 )
 
 var (
@@ -31,6 +33,10 @@ var (
 )
 
 // ---- CA certificate management ----
+
+//go:embed blocked.webp
+var blockedImage []byte
+var blockedImageBase64 string
 
 func loadOrCreateCA(certFile, keyFile string) {
 	// Try to load existing CA
@@ -206,11 +212,12 @@ func mitmRelay(clientConn net.Conn, destAddr, clientIP, remoteIP string) {
 
 		if isBlocked, score, reason := IsFraudHost(host); isBlocked {
 			slog.Warn("mitm: blocking request to fraud domain", "host", host)
-			
+
 			htmlContent := fmt.Sprintf(`<!DOCTYPE html>
 <html>
 <head>
 <title>Access Blocked</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <style>
 body { font-family: sans-serif; text-align: center; margin-top: 50px; background-color: #fce4e4; color: #cc0000; }
 .container { background: white; padding: 40px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); display: inline-block; max-width: 600px; }
@@ -227,9 +234,10 @@ h1 { margin-top: 0; }
 		<p><strong>Fraud Score:</strong> %d</p>
 		<p><strong>Reason:</strong> %s</p>
 	</div>
+	<img src="%s" alt="blocked">
 </div>
 </body>
-</html>`, host, score, reason)
+</html>`, host, score, reason, blockedImageBase64)
 
 			resp := &http.Response{
 				StatusCode: http.StatusForbidden,
