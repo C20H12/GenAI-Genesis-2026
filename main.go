@@ -14,6 +14,7 @@ const directAddr = ":8001"
 // ---- main ----
 
 func main() {
+	loadEnv(".env")
 	loadOrCreateCA("ca.crt", "ca.key")
 
 	// Listen with TPROXY

@@ -8,6 +8,7 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"os"
 	"strings"
 	"sync"
 
@@ -136,8 +137,11 @@ type propertySpec struct {
 const openRouterURL = "https://openrouter.ai/api/v1/chat/completions"
 const fraudModel = "deepseek/deepseek-v3.2"
 
-func callFraudLLM(text string) (*fraudResult, error) {
-	apiKey := "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"
+func callFraudLLM(url, text string) (*fraudResult, error) {
+	apiKey := os.Getenv("OPENROUTER_API_KEY")
+	if apiKey == "" {
+		return nil, fmt.Errorf("OPENROUTER_API_KEY not set")
+	}
 
 	// Truncate very long text to avoid excessive token usage
 	if len(text) > 8000 {
@@ -153,7 +157,7 @@ func callFraudLLM(text string) (*fraudResult, error) {
 			},
 			{
 				Role:    "user",
-				Content: text,
+				Content: fmt.Sprintf("URL: %s\n\nPage text:\n%s", url, text),
 			},
 		},
 		ResponseFormat: &responseFormat{
@@ -245,7 +249,7 @@ func AnalyzeFraud(url, method, htmlBody, clientIP, remoteIP string) {
 			return
 		}
 
-		result, err := callFraudLLM(text)
+		result, err := callFraudLLM(url, text)
 		if err != nil {
 			slog.Error("fraud: end", "url", url, "error", err)
 			return
