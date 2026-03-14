@@ -2,14 +2,20 @@ package main
 
 import (
 	"context"
+	_ "embed"
 	"log/slog"
 	"net"
+	"net/http"
 	"os"
 	"syscall"
 )
 
 const listenAddr = ":8000"
 const directAddr = ":8001"
+const httpAddr = ":8002"
+
+//go:embed install-ca.html
+var installCAHTML []byte
 
 // ---- main ----
 
@@ -55,6 +61,31 @@ func main() {
 				continue
 			}
 			go handleDirectConn(conn)
+		}
+	}()
+
+	// Serve CA certificate and installation page on HTTP
+	go func() {
+		mux := http.NewServeMux()
+		mux.HandleFunc("/install-ca.html", func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", "text/html; charset=utf-8")
+			w.Write(installCAHTML)
+		})
+		mux.HandleFunc("/ca.crt", func(w http.ResponseWriter, r *http.Request) {
+			http.ServeFile(w, r, "ca.crt")
+		})
+		mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+			if r.URL.Path == "/" {
+				http.Redirect(w, r, "/install-ca.html", http.StatusFound)
+				return
+			}
+			http.NotFound(w, r)
+		})
+
+		slog.Info("CA cert installation HTTP server listening", "addr", httpAddr)
+		err := http.ListenAndServe(httpAddr, mux)
+		if err != nil {
+			slog.Error("http server failed", "error", err)
 		}
 	}()
 
