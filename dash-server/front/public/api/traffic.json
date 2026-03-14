@@ -1,0 +1,10 @@
+[
+  { "time": "00:00", "inboundMbps": 410, "outboundMbps": 378 },
+  { "time": "03:00", "inboundMbps": 368, "outboundMbps": 322 },
+  { "time": "06:00", "inboundMbps": 452, "outboundMbps": 401 },
+  { "time": "09:00", "inboundMbps": 639, "outboundMbps": 575 },
+  { "time": "12:00", "inboundMbps": 721, "outboundMbps": 688 },
+  { "time": "15:00", "inboundMbps": 684, "outboundMbps": 627 },
+  { "time": "18:00", "inboundMbps": 596, "outboundMbps": 544 },
+  { "time": "21:00", "inboundMbps": 474, "outboundMbps": 419 }
+]

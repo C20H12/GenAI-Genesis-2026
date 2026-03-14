@@ -1,0 +1,42 @@
+[
+  {
+    "id": "BLK-1092",
+    "source": "10.8.12.41",
+    "destination": "unknown-c2.example",
+    "reason": "Known command-and-control domain pattern",
+    "category": "Malware",
+    "blockedAt": "2026-03-14 09:14:52",
+    "hitCount": 41,
+    "status": "active"
+  },
+  {
+    "id": "BLK-1093",
+    "source": "10.8.15.201",
+    "destination": "social-feed.example",
+    "reason": "Domain blocked by work-hours policy",
+    "category": "Policy",
+    "blockedAt": "2026-03-14 09:15:10",
+    "hitCount": 5,
+    "status": "review"
+  },
+  {
+    "id": "BLK-1094",
+    "source": "10.8.2.29",
+    "destination": "api-scrape.target.example",
+    "reason": "Automated request burst exceeded threshold",
+    "category": "Bot",
+    "blockedAt": "2026-03-14 09:16:43",
+    "hitCount": 116,
+    "status": "active"
+  },
+  {
+    "id": "BLK-1095",
+    "source": "10.8.44.8",
+    "destination": "paste.share.example",
+    "reason": "Potential sensitive payload signature detected",
+    "category": "DLP",
+    "blockedAt": "2026-03-14 09:17:08",
+    "hitCount": 12,
+    "status": "active"
+  }
+]
