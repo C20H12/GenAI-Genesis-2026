@@ -1,9 +1,11 @@
-package main
+package serv
 
 import (
 	"database/sql"
+	"embed"
 	"encoding/json"
 	"fmt"
+	"io/fs"
 	"log"
 	"math"
 	"net/http"
@@ -15,6 +17,9 @@ import (
 
 	_ "modernc.org/sqlite"
 )
+
+//go:embed front/dist/*
+var embedDist embed.FS
 
 type metric struct {
 	Value string `json:"value"`
@@ -59,16 +64,7 @@ type server struct {
 	db *sql.DB
 }
 
-func main() {
-	db, err := sql.Open("sqlite", "file:fraud.db?_pragma=journal_mode(WAL)")
-	if err != nil {
-		log.Fatalf("open sqlite: %v", err)
-	}
-	defer db.Close()
-
-	if err := initSchema(db); err != nil {
-		log.Fatalf("init schema: %v", err)
-	}
+func StartServer(db *sql.DB) {
 
 	// if err := seedData(db); err != nil {
 	// 	log.Fatalf("seed data: %v", err)
@@ -86,6 +82,9 @@ func main() {
 		writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 	})
 
+	embedDist, _ := fs.Sub(embedDist, "front/dist")
+	mux.Handle("/", http.FileServer(http.FS(embedDist)))
+
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "6767"
@@ -96,20 +95,6 @@ func main() {
 	if err := http.ListenAndServe(addr, withCORS(mux)); err != nil {
 		log.Fatal(err)
 	}
-}
-
-func initSchema(db *sql.DB) error {
-	_, err := db.Exec(`CREATE TABLE IF NOT EXISTS fraud_results (
-		id         INTEGER PRIMARY KEY AUTOINCREMENT,
-		url        TEXT,
-		method     TEXT,
-		score      INTEGER,
-		reason     TEXT,
-		client_ip  TEXT,
-		remote_ip  TEXT,
-		created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-	)`)
-	return err
 }
 
 func (s *server) handleOverview(w http.ResponseWriter, r *http.Request) {
