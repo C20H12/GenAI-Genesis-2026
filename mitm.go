@@ -234,7 +234,7 @@ h1 { margin-top: 0; }
 		<p><strong>Fraud Score:</strong> %d</p>
 		<p><strong>Reason:</strong> %s</p>
 	</div>
-	<img src="%s" alt="blocked">
+	<img src="%s" alt="blocked" style="width: 100%%; display: relative;">
 </div>
 </body>
 </html>`, host, score, reason, blockedImageBase64)
