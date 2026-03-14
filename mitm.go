@@ -21,9 +21,7 @@ import (
 	"os"
 	"strings"
 	"sync"
-	"syscall"
 	"time"
-	"unsafe"
 )
 
 var (
@@ -146,78 +144,24 @@ func getOriginalDst(conn net.Conn) (net.IP, int, error) {
 		return nil, 0, fmt.Errorf("not a TCPConn")
 	}
 
-	raw, err := tc.SyscallConn()
-	if err != nil {
-		return nil, 0, err
-	}
+	addr := tc.LocalAddr().(*net.TCPAddr)
 
-	var origIP net.IP
-	var origPort int
-	var syscallErr error
-
-	err = raw.Control(func(fd uintptr) {
-		// Try IPv4 SO_ORIGINAL_DST first
-		var addr syscall.RawSockaddrInet4
-		addrLen := uint32(unsafe.Sizeof(addr))
-		_, _, errno := syscall.Syscall6(
-			syscall.SYS_GETSOCKOPT,
-			fd,
-			syscall.SOL_IP,
-			80, // SO_ORIGINAL_DST
-			uintptr(unsafe.Pointer(&addr)),
-			uintptr(unsafe.Pointer(&addrLen)),
-			0,
-		)
-		if errno == 0 {
-			origIP = net.IPv4(addr.Addr[0], addr.Addr[1], addr.Addr[2], addr.Addr[3])
-			origPort = int(addr.Port>>8) | int(addr.Port&0xff)<<8 // ntohs
-			return
-		}
-
-		// Try IPv6 IP6T_SO_ORIGINAL_DST
-		var addr6 syscall.RawSockaddrInet6
-		addrLen6 := uint32(unsafe.Sizeof(addr6))
-		_, _, errno = syscall.Syscall6(
-			syscall.SYS_GETSOCKOPT,
-			fd,
-			syscall.SOL_IPV6,
-			80, // IP6T_SO_ORIGINAL_DST
-			uintptr(unsafe.Pointer(&addr6)),
-			uintptr(unsafe.Pointer(&addrLen6)),
-			0,
-		)
-		if errno == 0 {
-			origIP = addr6.Addr[:]
-			origPort = int(addr6.Port>>8) | int(addr6.Port&0xff)<<8
-			return
-		}
-
-		syscallErr = fmt.Errorf("getsockopt SO_ORIGINAL_DST failed: %v", errno)
-	})
-
-	if err != nil {
-		return nil, 0, err
-	}
-	return origIP, origPort, syscallErr
+	return addr.IP, addr.Port, nil
 }
 
 // ---- Shared MITM relay logic ----
 
-func mitmRelay(clientConn net.Conn, destAddr, host, clientIP, remoteIP string) {
+func mitmRelay(clientConn net.Conn, destAddr, clientIP, remoteIP string) {
+
+	var host string
 	// TLS handshake with client — extract SNI via GetConfigForClient
-	if host == "" {
-		// Will be filled by SNI callback
-	}
-	var sniHost string
 	tlsClientConn := tls.Server(clientConn, &tls.Config{
 		GetConfigForClient: func(hello *tls.ClientHelloInfo) (*tls.Config, error) {
-			sniHost = hello.ServerName
-			if host == "" {
-				host = sniHost
-			}
-			cert := getCertForHost(host)
+			slog.Info("gen cert for", "sni", hello.ServerName)
+			host = hello.ServerName
+			cert := getCertForHost(hello.ServerName)
 			if cert == nil {
-				return nil, fmt.Errorf("failed to generate cert for %s", host)
+				return nil, fmt.Errorf("failed to generate cert for %s", hello.ServerName)
 			}
 			return &tls.Config{
 				Certificates: []tls.Certificate{*cert},
@@ -328,10 +272,9 @@ func handleConn(clientConn net.Conn) {
 		return
 	}
 	destAddr := net.JoinHostPort(origIP.String(), fmt.Sprintf("%d", origPort))
-	host := origIP.String()
 
 	clientIP := clientConn.RemoteAddr().String()
-	mitmRelay(clientConn, destAddr, host, clientIP, destAddr)
+	mitmRelay(clientConn, destAddr, clientIP, destAddr)
 }
 
 // ---- HTTP CONNECT proxy handler (no TPROXY) ----
@@ -364,5 +307,5 @@ func handleDirectConn(clientConn net.Conn) {
 
 	slog.Info("direct: CONNECT tunnel", "dest", destAddr)
 	clientIP := clientConn.RemoteAddr().String()
-	mitmRelay(clientConn, destAddr, host, clientIP, destAddr)
+	mitmRelay(clientConn, destAddr, clientIP, destAddr)
 }
