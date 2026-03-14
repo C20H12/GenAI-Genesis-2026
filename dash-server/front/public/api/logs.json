@@ -1,0 +1,42 @@
+[
+  {
+    "id": 1,
+    "timestamp": "2026-03-14 09:18:01.112",
+    "level": "INFO",
+    "source": "router.edge-a",
+    "message": "Connection accepted from 10.8.12.41 via TLS1.3.",
+    "requestId": "req-ae13d01"
+  },
+  {
+    "id": 2,
+    "timestamp": "2026-03-14 09:18:02.403",
+    "level": "WARN",
+    "source": "filter.policy",
+    "message": "Blocked request to social-feed.example by policy rule P-44.",
+    "requestId": "req-ae13d39"
+  },
+  {
+    "id": 3,
+    "timestamp": "2026-03-14 09:18:04.220",
+    "level": "ERROR",
+    "source": "upstream.gateway",
+    "message": "Upstream timeout after 8000ms to api.partners.example.",
+    "requestId": "req-ae13d62"
+  },
+  {
+    "id": 4,
+    "timestamp": "2026-03-14 09:18:05.904",
+    "level": "INFO",
+    "source": "telemetry.agent",
+    "message": "Metrics batch flushed. samples=256 lag=18ms.",
+    "requestId": "req-ae13da0"
+  },
+  {
+    "id": 5,
+    "timestamp": "2026-03-14 09:18:06.711",
+    "level": "WARN",
+    "source": "throttle.guard",
+    "message": "Rate limit triggered for 10.8.2.29; window=60s.",
+    "requestId": "req-ae13dd4"
+  }
+]

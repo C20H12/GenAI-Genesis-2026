@@ -1,0 +1,6 @@
+{
+  "traffic": { "value": "1.48 Gbps", "delta": "+6.2%" },
+  "connections": { "value": "25,991", "delta": "+1,304" },
+  "approved": { "value": "21,472", "delta": "85.9%" },
+  "blocked": { "value": "3,509", "delta": "14.1%" }
+}
