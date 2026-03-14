@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Install CA Certificate</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 600px; margin: 40px auto; padding: 20px; line-height: 1.6; color: #333; background: #f9f9f9; }
+        h1 { color: #2c3e50; border-bottom: 2px solid #eee; padding-bottom: 10px; }
+        .btn { display: inline-block; background: #3498db; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; font-weight: bold; margin: 20px 0; }
+        .btn:hover { background: #2980b9; }
+        ol { background: white; padding: 20px 40px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .os-title { font-weight: bold; margin-top: 15px; color: #e67e22; }
+    </style>
+</head>
+<body>
+    <h1>CA Certificate Installation</h1>
+    <p>To allow the proxy to intercept HTTPS traffic without browser warnings, you must install and trust the root CA certificate.</p>
+    
+    <a href="ca.crt" class="btn" download="ca.crt">Download ca.crt</a>
+
+    <h2>Installation Instructions</h2>
+    <ol>
+        <li class="os-title">Linux (Ubuntu/Debian) System Wide</li>
+        <ul>
+            <li>Copy the certificate: <code>sudo cp ca.crt /usr/local/share/ca-certificates/</code></li>
+            <li>Update certs: <code>sudo update-ca-certificates</code></li>
+        </ul>
+
+        <li class="os-title">Firefox (Any OS)</li>
+        <ul>
+            <li>Open Settings > Privacy & Security</li>
+            <li>Scroll down to "Certificates" and click "View Certificates"</li>
+            <li>In the "Authorities" tab, click "Import..."</li>
+            <li>Select <code>ca.crt</code> and check "Trust this CA to identify websites"</li>
+        </ul>
+
+        <li class="os-title">Chrome / Edge / Chromium (Linux/Windows)</li>
+        <ul>
+            <li>Open Settings > Privacy and security > Security</li>
+            <li>Click "Manage certificates"</li>
+            <li>Go to the "Authorities" tab and click "Import"</li>
+            <li>Select <code>ca.crt</code> and check "Trust this certificate for identifying websites"</li>
+        </ul>
+        
+        <li class="os-title">macOS</li>
+        <ul>
+            <li>Double-click the downloaded <code>ca.crt</code> file to open Keychain Access.</li>
+            <li>Add it to the "System" keychain.</li>
+            <li>Double-click the newly added certificate, expand "Trust", and change "When using this certificate" to "Always Trust".</li>
+        </ul>
+    </ol>
+</body>
+</html>

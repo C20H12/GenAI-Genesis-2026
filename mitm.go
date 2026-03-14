@@ -22,6 +22,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	_ "embed"
 )
 
 var (
@@ -31,6 +33,10 @@ var (
 )
 
 // ---- CA certificate management ----
+
+//go:embed blocked.webp
+var blockedImage []byte
+var blockedImageBase64 string
 
 func loadOrCreateCA(certFile, keyFile string) {
 	// Try to load existing CA
@@ -201,6 +207,49 @@ func mitmRelay(clientConn net.Conn, destAddr, clientIP, remoteIP string) {
 			if err != io.EOF {
 				slog.Error("read request", "error", err)
 			}
+			return
+		}
+
+		if isBlocked, score, reason := IsFraudHost(host); isBlocked {
+			slog.Warn("mitm: blocking request to fraud domain", "host", host)
+
+			htmlContent := fmt.Sprintf(`<!DOCTYPE html>
+<html>
+<head>
+<title>Access Blocked</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+body { font-family: sans-serif; text-align: center; margin-top: 50px; background-color: #fce4e4; color: #cc0000; }
+.container { background: white; padding: 40px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); display: inline-block; max-width: 600px; }
+h1 { margin-top: 0; }
+.details { text-align: left; background: #f9f9f9; padding: 20px; border-radius: 4px; color: #333; margin-top: 20px; font-size: 14px; }
+</style>
+</head>
+<body>
+<div class="container">
+	<h1>🚫 Access Blocked</h1>
+	<p>This domain has been identified as a security risk and is blocked by GenAI Genesis.</p>
+	<div class="details">
+		<p><strong>Domain:</strong> %s</p>
+		<p><strong>Fraud Score:</strong> %d</p>
+		<p><strong>Reason:</strong> %s</p>
+	</div>
+	<img src="%s" alt="blocked">
+</div>
+</body>
+</html>`, host, score, reason, blockedImageBase64)
+
+			resp := &http.Response{
+				StatusCode: http.StatusForbidden,
+				ProtoMajor: 1,
+				ProtoMinor: 1,
+				Header: http.Header{
+					"Content-Type": []string{"text/html; charset=utf-8"},
+				},
+				Body:          io.NopCloser(strings.NewReader(htmlContent)),
+				ContentLength: int64(len(htmlContent)),
+			}
+			resp.Write(tlsClientConn)
 			return
 		}
 
