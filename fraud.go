@@ -12,6 +12,7 @@ import (
 	"os"
 	"strings"
 	"sync"
+	"unicode"
 
 	"golang.org/x/net/html"
 	_ "modernc.org/sqlite"
@@ -93,7 +94,14 @@ func extractText(htmlBytes []byte) string {
 			if skip > 0 {
 				continue
 			}
-			text := strings.TrimSpace(tokenizer.Token().Data)
+			raw := tokenizer.Token().Data
+			text := strings.Map(func(r rune) rune {
+				if unicode.IsPrint(r) || unicode.IsSpace(r) {
+					return r
+				}
+				return -1
+			}, raw)
+			text = strings.TrimSpace(text)
 			if text != "" {
 				if buf.Len() > 0 {
 					buf.WriteByte(' ')
@@ -179,13 +187,13 @@ func callFraudLLM(url, text string) (*fraudResult, error) {
 				Schema: schemaSpec{
 					Type: "object",
 					Properties: map[string]propertySpec{
-						"score": {
-							Type:        "integer",
-							Description: "Fraud score from 0 (not fraud) to 100 (definitely fraud)",
-						},
 						"reason": {
 							Type:        "string",
 							Description: "Brief explanation of the fraud assessment",
+						},
+						"score": {
+							Type:        "integer",
+							Description: "Fraud score from 0 (not fraud) to 100 (definitely fraud)",
 						},
 					},
 					Required:             []string{"score", "reason"},
