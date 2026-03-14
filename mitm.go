@@ -228,7 +228,7 @@ h1 { margin-top: 0; }
 <body>
 <div class="container">
 	<h1>🚫 Access Blocked</h1>
-	<p>This domain has been identified as a security risk and is blocked by GenAI Genesis.</p>
+	<p>This domain has been identified as a security risk and is blocked by firewall.</p>
 	<div class="details">
 		<p><strong>Domain:</strong> %s</p>
 		<p><strong>Fraud Score:</strong> %d</p>
