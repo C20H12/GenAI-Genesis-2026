@@ -153,7 +153,7 @@ func callFraudLLM(url, text string) (*fraudResult, error) {
 		Messages: []chatMessage{
 			{
 				Role:    "system",
-				Content: "You are a fraud detection assistant. Analyze the following webpage text and determine if it is fraudulent. Return a fraud score from 0 (not fraud) to 100 (definitely fraud) and a brief reason, in JSON.",
+				Content: "You are a fraud detection assistant. Analyze the following webpage text and determine if it is fraudulent. Do not treat unreadable characters, encoding problems, broken text, or incomplete content as fraud evidence by themselves. If the text quality is poor, reduce confidence rather than assigning a high fraud score. Only use clear scam-related evidence found in the text. Return a fraud score from 0 (not fraud) to 100 (definitely fraud) and a brief reason, in JSON.",
 			},
 			{
 				Role:    "user",
