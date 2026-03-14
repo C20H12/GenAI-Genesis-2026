@@ -2,8 +2,9 @@ package main
 
 import (
 	"context"
-	"log"
+	"log/slog"
 	"net"
+	"os"
 	"syscall"
 )
 
@@ -28,26 +29,28 @@ func main() {
 
 	ln, err := lc.Listen(context.Background(), "tcp", listenAddr)
 	if err != nil {
-		log.Fatalf("listen %s: %v (need root/CAP_NET_ADMIN)", listenAddr, err)
+		slog.Error("listen failed", "addr", listenAddr, "error", err, "hint", "need root/CAP_NET_ADMIN")
+		os.Exit(1)
 	}
 	defer ln.Close()
 
-	log.Printf("MITM TPROXY listening on %s", listenAddr)
-	log.Println("Trust ca.crt in your client, then redirect TLS traffic with iptables TPROXY to this port.")
+	slog.Info("MITM TPROXY listening", "addr", listenAddr)
+	slog.Info("Trust ca.crt in your client, then redirect TLS traffic with iptables TPROXY to this port.")
 
 	// Direct HTTP CONNECT listener (no TPROXY, for curl testing)
 	directLn, err := net.Listen("tcp", directAddr)
 	if err != nil {
-		log.Fatalf("listen %s: %v", directAddr, err)
+		slog.Error("listen failed", "addr", directAddr, "error", err)
+		os.Exit(1)
 	}
 	defer directLn.Close()
-	log.Printf("MITM direct proxy listening on %s (use: curl -x http://localhost%s --cacert ca.crt https://example.com)", directAddr, directAddr)
+	slog.Info("MITM direct proxy listening", "addr", directAddr, "usage", "curl -x http://localhost"+directAddr+" --cacert ca.crt https://example.com")
 
 	go func() {
 		for {
 			conn, err := directLn.Accept()
 			if err != nil {
-				log.Printf("direct accept: %v", err)
+				slog.Error("direct accept", "error", err)
 				continue
 			}
 			go handleDirectConn(conn)
@@ -57,7 +60,7 @@ func main() {
 	for {
 		conn, err := ln.Accept()
 		if err != nil {
-			log.Printf("accept: %v", err)
+			slog.Error("accept", "error", err)
 			continue
 		}
 		go handleConn(conn)

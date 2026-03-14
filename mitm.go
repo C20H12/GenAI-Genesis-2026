@@ -14,7 +14,7 @@ import (
 	"encoding/pem"
 	"fmt"
 	"io"
-	"log"
+	"log/slog"
 	"math/big"
 	"net"
 	"net/http"
@@ -39,20 +39,23 @@ func loadOrCreateCA(certFile, keyFile string) {
 	if certPEM, err := os.ReadFile(certFile); err == nil {
 		keyPEM, err := os.ReadFile(keyFile)
 		if err != nil {
-			log.Fatalf("ca.crt exists but ca.key missing: %v", err)
+			slog.Error("ca.crt exists but ca.key missing", "error", err)
+			os.Exit(1)
 		}
 		block, _ := pem.Decode(certPEM)
 		caCert, err = x509.ParseCertificate(block.Bytes)
 		if err != nil {
-			log.Fatalf("parse ca.crt: %v", err)
+			slog.Error("parse ca.crt", "error", err)
+			os.Exit(1)
 		}
 		keyBlock, _ := pem.Decode(keyPEM)
 		k, err := x509.ParseECPrivateKey(keyBlock.Bytes)
 		if err != nil {
-			log.Fatalf("parse ca.key: %v", err)
+			slog.Error("parse ca.key", "error", err)
+			os.Exit(1)
 		}
 		caKey = k
-		log.Println("Loaded existing CA from", certFile)
+		slog.Info("Loaded existing CA", "file", certFile)
 		return
 	}
 
@@ -76,7 +79,8 @@ func loadOrCreateCA(certFile, keyFile string) {
 
 	der, err := x509.CreateCertificate(rand.Reader, template, template, &caKey.PublicKey, caKey)
 	if err != nil {
-		log.Fatalf("create CA cert: %v", err)
+		slog.Error("create CA cert", "error", err)
+		os.Exit(1)
 	}
 	caCert, _ = x509.ParseCertificate(der)
 
@@ -91,7 +95,7 @@ func loadOrCreateCA(certFile, keyFile string) {
 	pem.Encode(keyOut, &pem.Block{Type: "EC PRIVATE KEY", Bytes: keyDer})
 	keyOut.Close()
 
-	log.Println("Generated new CA:", certFile, keyFile)
+	slog.Info("Generated new CA", "cert", certFile, "key", keyFile)
 }
 
 // ---- Dynamic certificate generation ----
@@ -121,7 +125,7 @@ func getCertForHost(host string) *tls.Certificate {
 
 	der, err := x509.CreateCertificate(rand.Reader, template, caCert, &key.PublicKey, caKey)
 	if err != nil {
-		log.Printf("create cert for %s: %v", host, err)
+		slog.Error("create cert", "host", host, "error", err)
 		return nil
 	}
 
@@ -199,7 +203,7 @@ func getOriginalDst(conn net.Conn) (net.IP, int, error) {
 
 // ---- Shared MITM relay logic ----
 
-func mitmRelay(clientConn net.Conn, destAddr, host string) {
+func mitmRelay(clientConn net.Conn, destAddr, host, clientIP, remoteIP string) {
 	// TLS handshake with client — extract SNI via GetConfigForClient
 	if host == "" {
 		// Will be filled by SNI callback
@@ -221,7 +225,7 @@ func mitmRelay(clientConn net.Conn, destAddr, host string) {
 		},
 	})
 	if err := tlsClientConn.Handshake(); err != nil {
-		log.Printf("client TLS handshake: %v", err)
+		slog.Error("client TLS handshake", "error", err)
 		return
 	}
 	defer tlsClientConn.Close()
@@ -229,7 +233,7 @@ func mitmRelay(clientConn net.Conn, destAddr, host string) {
 	// Connect to real server
 	serverConn, err := net.DialTimeout("tcp", destAddr, 10*time.Second)
 	if err != nil {
-		log.Printf("dial server %s: %v", destAddr, err)
+		slog.Error("dial server", "addr", destAddr, "error", err)
 		return
 	}
 	defer serverConn.Close()
@@ -238,7 +242,7 @@ func mitmRelay(clientConn net.Conn, destAddr, host string) {
 		ServerName: host,
 	})
 	if err := tlsServerConn.Handshake(); err != nil {
-		log.Printf("server TLS handshake (%s): %v", host, err)
+		slog.Error("server TLS handshake", "host", host, "error", err)
 		return
 	}
 	defer tlsServerConn.Close()
@@ -251,22 +255,22 @@ func mitmRelay(clientConn net.Conn, destAddr, host string) {
 		req, err := http.ReadRequest(clientBuf)
 		if err != nil {
 			if err != io.EOF {
-				log.Printf("read request: %v", err)
+				slog.Error("read request", "error", err)
 			}
 			return
 		}
 
 		url := fmt.Sprintf("https://%s%s", host, req.URL.RequestURI())
-		fmt.Printf("\n\033[1;36m→ %s %s\033[0m\n", req.Method, url)
+		slog.Info("request", "method", req.Method, "url", url)
 
 		if err := req.Write(tlsServerConn); err != nil {
-			log.Printf("forward request: %v", err)
+			slog.Error("forward request", "error", err)
 			return
 		}
 
 		resp, err := http.ReadResponse(serverBuf, req)
 		if err != nil {
-			log.Printf("read response: %v", err)
+			slog.Error("read response", "error", err)
 			return
 		}
 
@@ -277,7 +281,7 @@ func mitmRelay(clientConn net.Conn, destAddr, host string) {
 			body, err := io.ReadAll(resp.Body)
 			resp.Body.Close()
 			if err != nil {
-				log.Printf("read response body: %v", err)
+				slog.Error("read response body", "error", err)
 				return
 			}
 
@@ -295,16 +299,18 @@ func mitmRelay(clientConn net.Conn, destAddr, host string) {
 				}
 			}
 
-			fmt.Printf("\033[1;33m← %d %s (%d bytes)\033[0m\n", resp.StatusCode, ct, len(decoded))
-			fmt.Println(string(decoded))
+			slog.Info("response", "status", resp.StatusCode, "content_type", ct, "bytes", len(decoded))
+
+			// Async fraud detection — does not block
+			AnalyzeFraud(url, req.Method, string(decoded), clientIP, remoteIP)
 
 			resp.Body = io.NopCloser(bytes.NewReader(body))
 		} else {
-			fmt.Printf("\033[1;90m← %d %s (not HTML, skipping body)\033[0m\n", resp.StatusCode, ct)
+			slog.Debug("response", "status", resp.StatusCode, "content_type", ct, "note", "not HTML, skipping body")
 		}
 
 		if err := resp.Write(tlsClientConn); err != nil {
-			log.Printf("forward response: %v", err)
+			slog.Error("forward response", "error", err)
 			return
 		}
 	}
@@ -318,13 +324,14 @@ func handleConn(clientConn net.Conn) {
 	// 1) Get original destination
 	origIP, origPort, err := getOriginalDst(clientConn)
 	if err != nil {
-		log.Printf("get original dst: %v", err)
+		slog.Error("get original dst", "error", err)
 		return
 	}
 	destAddr := net.JoinHostPort(origIP.String(), fmt.Sprintf("%d", origPort))
 	host := origIP.String()
 
-	mitmRelay(clientConn, destAddr, host)
+	clientIP := clientConn.RemoteAddr().String()
+	mitmRelay(clientConn, destAddr, host, clientIP, destAddr)
 }
 
 // ---- HTTP CONNECT proxy handler (no TPROXY) ----
@@ -335,12 +342,12 @@ func handleDirectConn(clientConn net.Conn) {
 	br := bufio.NewReader(clientConn)
 	req, err := http.ReadRequest(br)
 	if err != nil {
-		log.Printf("direct: read request: %v", err)
+		slog.Error("direct: read request", "error", err)
 		return
 	}
 
 	if req.Method != http.MethodConnect {
-		log.Printf("direct: expected CONNECT, got %s", req.Method)
+		slog.Warn("direct: expected CONNECT", "got", req.Method)
 		fmt.Fprintf(clientConn, "HTTP/1.1 405 Method Not Allowed\r\n\r\n")
 		return
 	}
@@ -355,6 +362,7 @@ func handleDirectConn(clientConn net.Conn) {
 	// Respond 200 to complete the CONNECT tunnel
 	fmt.Fprintf(clientConn, "HTTP/1.1 200 Connection Established\r\n\r\n")
 
-	log.Printf("direct: CONNECT tunnel to %s", destAddr)
-	mitmRelay(clientConn, destAddr, host)
+	slog.Info("direct: CONNECT tunnel", "dest", destAddr)
+	clientIP := clientConn.RemoteAddr().String()
+	mitmRelay(clientConn, destAddr, host, clientIP, destAddr)
 }
