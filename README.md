@@ -18,7 +18,7 @@ A `ca.crt` is generated on first run — install it as a trusted CA on client de
 Cross-compile and copy to the Pi:
 
 ```bash
-GOOS=linux GOARCH=arm64 go build -o mitm .
+GOOS=linux GOARCH=arm GOARM=7 CGO_ENABLED=0 go build -o mitm .
 scp mitm .env ca.crt ca.key pi@<pi-ip>:~/mitm/
 ```
 
