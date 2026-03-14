@@ -65,16 +65,28 @@ This document describes the mock API used by the dashboard pages. The responses 
 [
   {
     "id": "BLK-1092",
-    "source": "10.8.12.41",
     "destination": "unknown-c2.example",
     "reason": "Known command-and-control domain pattern",
-    "category": "Malware",
     "blockedAt": "2026-03-14 09:14:52",
-    "hitCount": 41,
-    "status": "active"
+  }
+]
+
+```
+- Endpoint: `PATCH /api/blocked/{id}`
+- Used by: Blocklist management page
+
+### body
+
+```json
+[
+  {
+    "destination": "unknown-c2.example",
+    "reason": "Known command-and-control domain pattern",
   }
 ]
 ```
+- Endpoint: `DALETE /api/blocked/{id}`
+- Used by: Blocklist management page
 
 ### Notes
 
