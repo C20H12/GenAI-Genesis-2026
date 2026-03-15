@@ -1,0 +1,27 @@
+[
+  {
+    "type": "verify-domain",
+    "domain": "example.com",
+    "requestId": "test-001"
+  },
+  {
+    "type": "verify-domain",
+    "domain": "github.com",
+    "requestId": "test-002"
+  },
+  {
+    "type": "verify-domain",
+    "domain": "microsoft.com",
+    "requestId": "test-003"
+  },
+  {
+    "type": "verify-domain",
+    "domain": "https://fuu78.com/",
+    "requestId": "test-004"
+  },
+  {
+    "type": "verify-domain",
+    "domain": "https://pornhub.com/",
+    "requestId": "test-004"
+  }
+]
