@@ -3,13 +3,14 @@
   "private": true,
   "version": "1.0.0",
   "description": "Websocket queue worker that validates blocked domains with Puppeteer + OpenRouter vision",
-  "main": "domain-verifier.js",
+  "main": "server.js",
   "scripts": {
-    "start": "node domain-verifier.js",
+    "start": "node server.js",
     "test:client": "node test-client.js"
   },
   "dependencies": {
     "dotenv": "^17.3.1",
+    "express": "^5.2.1",
     "puppeteer": "^24.39.1",
     "ws": "^8.19.0"
   }

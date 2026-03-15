@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Domain Verifier Status</title>
+  <style>
+    body {
+      font-family: -apple-system, Segoe UI, Roboto, sans-serif;
+      margin: 24px;
+      background: #f7f9fc;
+      color: #111827;
+    }
+    h1 {
+      margin: 0 0 12px;
+    }
+    .meta {
+      color: #4b5563;
+      margin-bottom: 16px;
+    }
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 16px;
+    }
+    .card {
+      background: #fff;
+      border: 1px solid #e5e7eb;
+      border-radius: 10px;
+      padding: 14px;
+    }
+    .table-wrap {
+      margin-top: 16px;
+      background: #fff;
+      border: 1px solid #e5e7eb;
+      border-radius: 10px;
+      padding: 14px;
+      overflow-x: auto;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    th,
+    td {
+      border-bottom: 1px solid #e5e7eb;
+      padding: 8px;
+      text-align: left;
+      vertical-align: top;
+      font-size: 14px;
+      /* max-height: 200px; */
+      overflow: hidden;
+    }
+    .reason-box {
+      display: grid;
+      gap: 8px;
+      min-width: 260px;
+    }
+    .thumb {
+      width: 420px;
+      max-width: 100%;
+      border: 1px solid #d1d5db;
+      border-radius: 6px;
+      background: #f9fafb;
+      object-fit: cover;
+      max-height: 200px;
+      object-position: top;
+    }
+    th {
+      background: #f3f4f6;
+      font-weight: 600;
+    }
+    ul {
+      margin: 8px 0 0;
+      padding-left: 20px;
+    }
+    code {
+      background: #eef2ff;
+      border-radius: 4px;
+      padding: 2px 6px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Domain Verifier Dashboard</h1>
+  <div class="meta">Auto refresh every 2s from <code>/status</code></div>
+  <div id="summary" class="meta">Loading...</div>
+  <div class="cards">
+    <div class="card">
+      <strong>Currently Processing</strong>
+      <ul id="processingList"></ul>
+    </div>
+    <div class="card">
+      <strong>Queued</strong>
+      <ul id="queuedList"></ul>
+    </div>
+  </div>
+
+  <div class="table-wrap">
+    <strong>Saved Results</strong>
+    <table>
+      <thead>
+        <tr>
+          <th>Domain</th>
+          <th>Score</th>
+          <th>Reason</th>
+          <th>Created</th>
+        </tr>
+      </thead>
+      <tbody id="resultsBody">
+        <tr>
+          <td colspan="4">Loading...</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <script>
+    function renderList(el, items, formatter) {
+      if (!items.length) {
+        el.innerHTML = '<li>None</li>';
+        return;
+      }
+      el.innerHTML = items.map(formatter).join('');
+    }
+
+    function escapeHtml(value) {
+      return String(value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    function renderResultsTable(items) {
+      var tbody = document.getElementById('resultsBody');
+      if (!items || !items.length) {
+        tbody.innerHTML = '<tr><td colspan="4">No saved results yet.</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = items
+        .map(function (row) {
+          var screenshotHtml = row.screenshotPath
+            ? '<img class="thumb" src="' + escapeHtml(row.screenshotPath) + '" alt="screenshot for ' + escapeHtml(row.domain || '') + '" />'
+            : '<div>No screenshot</div>';
+
+          return (
+            '<tr>' +
+              '<td><code>' + escapeHtml(row.domain || '') + '</code></td>' +
+              '<td>' + escapeHtml(row.score ?? 0) + '</td>' +
+              '<td><div class="reason-box">' + screenshotHtml + '<div>' + escapeHtml(row.reason || '') + '</div></div></td>' +
+              '<td>' + escapeHtml(row.createdAt || '') + '</td>' +
+            '</tr>'
+          );
+        })
+        .join('');
+    }
+
+    async function refresh() {
+      try {
+        const res = await fetch('/status', { cache: 'no-store' });
+        const state = await res.json();
+
+        document.getElementById('summary').textContent =
+          'Active: ' + state.activeCount + ' | Queue: ' + state.queueSize + ' | Updated: ' + state.updatedAt;
+
+        renderList(
+          document.getElementById('processingList'),
+          state.processing,
+          function (item) {
+            return '<li><code>' + item.domain + '</code> (requestId: ' + (item.requestId ?? 'none') + ')</li>';
+          }
+        );
+
+        renderList(
+          document.getElementById('queuedList'),
+          state.queued,
+          function (item) {
+            return '<li><code>' + item.domain + '</code> (requestId: ' + (item.requestId ?? 'none') + ')</li>';
+          }
+        );
+
+        renderResultsTable(state.results);
+      } catch (err) {
+        document.getElementById('summary').textContent = 'Failed to load status: ' + err.message;
+        document.getElementById('resultsBody').innerHTML = '<tr><td colspan="4">Failed to load saved results.</td></tr>';
+      }
+    }
+
+    refresh();
+    id = setInterval(refresh, 2000);
+  </script>
+</body>
+</html>

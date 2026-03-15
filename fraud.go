@@ -279,6 +279,37 @@ func callFraudLLM(url, text string) (*fraudResult, error) {
 	return &result, nil
 }
 
+func persistFraudResult(reqURL, method, domain, clientIP, remoteIP string, result *fraudResult) {
+	if result == nil {
+		return
+	}
+
+	if fraudDB == nil {
+		slog.Warn("fraud: persist", "url", reqURL, "note", "db not initialized, skipping insert")
+		return
+	}
+
+	_, err := fraudDB.Exec(
+		`INSERT INTO fraud_results (url, method, score, reason, client_ip, remote_ip) VALUES (?, ?, ?, ?, ?, ?)`,
+		reqURL, method, result.Score, result.Reason, clientIP, remoteIP,
+	)
+	if err != nil {
+		slog.Error("fraud: insert", "url", reqURL, "method", method, "error", err)
+	}
+
+	if result.Score >= 65 && domain != "" {
+		_, err = fraudDB.Exec(
+			`INSERT OR REPLACE INTO blacklist (domain, score, reason) VALUES (?, ?, ?)`,
+			domain, result.Score, result.Reason,
+		)
+		if err != nil {
+			slog.Error("fraud: insert blacklist", "domain", domain, "error", err)
+		} else {
+			slog.Info("fraud: domain blacklisted", "domain", domain, "score", result.Score)
+		}
+	}
+}
+
 // ---- Public API ----
 
 // AnalyzeFraud kicks off an async fraud analysis. It does NOT block the caller.
@@ -288,51 +319,34 @@ func AnalyzeFraud(reqURL, method, htmlBody, clientIP, remoteIP string) {
 	go func() {
 		slog.Info("fraud: start", "url", reqURL, "method", method)
 
+		parsedURL, parseErr := url.Parse(reqURL)
+		domain := ""
+		if parseErr == nil {
+			domain = parsedURL.Hostname()
+		}
+
 		text := extractText([]byte(htmlBody))
+
 		if len(strings.TrimSpace(text)) == 0 {
-			slog.Info("fraud: end", "url", reqURL, "note", "empty text, skipped")
+			slog.Info("fraud: llm", "url", reqURL, "note", "empty text, skipped")
+			go analyzeAndPersistViaWebsocket(reqURL, method, domain, clientIP, remoteIP)
+			slog.Info("fraud: end", "url", reqURL, "note", "llm skipped; websocket scheduled")
 			return
 		}
 
-		result, err := callFraudLLM(reqURL, text)
+		llmResult, err := callFraudLLM(reqURL, text)
 		if err != nil {
-			slog.Error("fraud: end", "url", reqURL, "error", err)
+			slog.Error("fraud: llm", "url", reqURL, "error", err)
+			go analyzeAndPersistViaWebsocket(reqURL, method, domain, clientIP, remoteIP)
+			slog.Info("fraud: end", "url", reqURL, "note", "llm failed; websocket scheduled")
 			return
 		}
 
-		slog.Info("fraud: result", "url", reqURL, "score", result.Score, "reason", result.Reason)
+		slog.Info("fraud: llm result", "url", reqURL, "score", llmResult.Score, "reason", llmResult.Reason)
+		persistFraudResult(reqURL, method, domain, clientIP, remoteIP, llmResult)
 
-		if fraudDB == nil {
-			slog.Warn("fraud: end", "url", reqURL, "note", "db not initialized, skipping insert")
-			return
-		}
-
-		_, err = fraudDB.Exec(
-			`INSERT INTO fraud_results (url, method, score, reason, client_ip, remote_ip) VALUES (?, ?, ?, ?, ?, ?)`,
-			reqURL, method, result.Score, result.Reason, clientIP, remoteIP,
-		)
-		if err != nil {
-			slog.Error("fraud: insert", "error", err)
-		}
-
-		if result.Score >= 65 {
-			if parsedURL, err := url.Parse(reqURL); err == nil {
-				domain := parsedURL.Hostname()
-				if domain != "" {
-					_, err = fraudDB.Exec(
-						`INSERT OR REPLACE INTO blacklist (domain, score, reason) VALUES (?, ?, ?)`,
-						domain, result.Score, result.Reason,
-					)
-					if err != nil {
-						slog.Error("fraud: insert blacklist", "domain", domain, "error", err)
-					} else {
-						slog.Info("fraud: domain blacklisted", "domain", domain, "score", result.Score)
-					}
-				}
-			}
-		}
-
-		slog.Info("fraud: end", "url", reqURL, "score", result.Score)
+		go analyzeAndPersistViaWebsocket(reqURL, method, domain, clientIP, remoteIP)
+		slog.Info("fraud: end", "url", reqURL, "score", llmResult.Score, "note", "websocket scheduled")
 	}()
 }
 
