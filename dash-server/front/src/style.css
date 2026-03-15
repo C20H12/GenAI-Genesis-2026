@@ -1,6 +1,7 @@
 @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap');
 
 :root {
+  color-scheme: light;
   --ink-950: #081c2e;
   --ink-800: #15334a;
   --sky-700: #22577a;
@@ -13,7 +14,6 @@
   --border: #d5e7e5;
 
   font-family: 'IBM Plex Sans', sans-serif;
-  color: var(--ink-800);
   background: radial-gradient(circle at 8% 15%, rgba(87, 204, 153, 0.2) 0, transparent 34%),
     radial-gradient(circle at 84% -10%, rgba(56, 163, 165, 0.16) 0, transparent 40%), var(--paper);
   font-synthesis: none;

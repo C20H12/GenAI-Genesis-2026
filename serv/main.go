@@ -232,9 +232,8 @@ func (s *server) handleBlockedList(w http.ResponseWriter, r *http.Request) {
 	}
 
 	rows, err := s.db.Query(`
-		SELECT id, url, reason, score, created_at
-		FROM fraud_results
-		WHERE score >= 65
+		SELECT id, domain, score, reason, created_at
+		FROM blacklist
 		ORDER BY datetime(created_at) DESC
 	`)
 	if err != nil {
@@ -243,16 +242,17 @@ func (s *server) handleBlockedList(w http.ResponseWriter, r *http.Request) {
 	}
 	defer rows.Close()
 
+
 	entries := make([]blockedEntry, 0, 32)
 	for rows.Next() {
-		var entry blockedEntry
 		var rawID int
+		var entry blockedEntry
 		var score int
 		if err := rows.Scan(
 			&rawID,
 			&entry.Destination,
-			&entry.Reason,
 			&score,
+			&entry.Reason,
 			&entry.BlockedAt,
 		); err != nil {
 			writeError(w, http.StatusInternalServerError, err)
@@ -312,7 +312,7 @@ func (s *server) handleBlockedPatch(w http.ResponseWriter, r *http.Request, id s
 	}
 
 	result, err := s.db.Exec(
-		`UPDATE fraud_results SET url = ?, reason = ? WHERE id = ?`,
+		`UPDATE blacklist SET domain = ?, reason = ? WHERE id = ?`,
 		payload.Destination,
 		payload.Reason,
 		rowID,
@@ -342,7 +342,7 @@ func (s *server) handleBlockedDelete(w http.ResponseWriter, _ *http.Request, id 
 		return
 	}
 
-	result, err := s.db.Exec(`DELETE FROM fraud_results WHERE id = ?`, rowID)
+	result, err := s.db.Exec(`DELETE FROM blacklist WHERE id = ?`, rowID)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err)
 		return
