@@ -10,9 +10,9 @@ import Textarea from "primevue/textarea";
 import type { ProxyLog } from "../data/proxyData";
 import { fetchLogsData } from "../services/proxyApi";
 
-type LevelFilter = "ALL" | "INFO" | "WARN" | "ERROR";
+type LevelFilter = "OK" | "BLOCKED";
 
-const level = ref<LevelFilter>("ALL");
+const level = ref<LevelFilter>("OK");
 const query = ref("");
 const proxyLogs = ref<ProxyLog[]>([]);
 const selectedLogId = ref<number | null>(null);
@@ -60,8 +60,7 @@ const rawLogText = computed(() => {
 });
 
 const levelSeverity = (value: LevelFilter) => {
-  if (value === "ERROR") return "danger";
-  if (value === "WARN") return "warn";
+  if (value === "BLOCKED") return "warn";
   return "info";
 };
 
@@ -102,6 +101,7 @@ const formatTime = (t: string) => {
               {{ formatTime(slotProps.data.timestamp) }}
             </template>
           </Column>
+          <Column field="source" header="Source" />
           <Column field="source" header="Source" />
           <Column field="message" header="Message" />
           <Column header="Level">
