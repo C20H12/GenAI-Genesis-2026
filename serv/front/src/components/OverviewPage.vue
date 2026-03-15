@@ -147,11 +147,11 @@ const peakTraffic = computed(() => {
         <template #content>
           <DataTable :value="trafficRows" size="small" stripedRows>
             <Column field="time" header="Time" />
-            <Column field="inboundMbps" header="Inbound (Mbps)" />
-            <Column field="outboundMbps" header="Outbound (Mbps)" />
-            <Column field="total" header="Total (Mbps)" />
+            <Column field="inboundMbps" header="Inbound (MB)" />
+            <Column field="outboundMbps" header="Outbound (MB)" />
+            <Column field="total" header="Total (MB)" />
           </DataTable>
-          <p class="panel-meta">Peak combined traffic: {{ peakTraffic }} Mbps</p>
+          <p class="panel-meta">Peak combined traffic: {{ peakTraffic }} MB</p>
         </template>
       </Card>
 
