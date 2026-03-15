@@ -92,6 +92,13 @@ function normalizeScore(value) {
   return Math.round(num);
 }
 
+function toPageKey(domainOrUrl) {
+  const normalized = normalizeUrl(domainOrUrl);
+  const parsed = new URL(normalized);
+  const path = parsed.pathname || '/';
+  return `${parsed.hostname}${path}`.toLowerCase();
+}
+
 async function readSavedResults() {
   try {
     const raw = await fs.readFile(RESULTS_FILE, 'utf8');
@@ -119,6 +126,34 @@ function saveResultRecord(record) {
     });
 
   return resultsWriteQueue;
+}
+
+async function findCachedResult(domainOrUrl) {
+  // Ensure in-flight writes are visible before cache lookup.
+  await resultsWriteQueue;
+
+  const targetPageKey = toPageKey(domainOrUrl);
+  const targetRaw = String(domainOrUrl || '').trim().toLowerCase();
+  const saved = await readSavedResults();
+
+  return saved.find((entry) => {
+    const entryDomain = String(entry.domain || '').trim().toLowerCase();
+    const entryPageKey = String(entry.pageKey || '').trim().toLowerCase();
+
+    if (entryPageKey && entryPageKey === targetPageKey) {
+      return true;
+    }
+
+    if (entryDomain === targetRaw) {
+      return true;
+    }
+
+    try {
+      return toPageKey(entry.domain || '') === targetPageKey;
+    } catch {
+      return false;
+    }
+  });
 }
 
 async function renderPageHtml(domain) {
@@ -286,6 +321,22 @@ async function processQueue() {
 
       try {
         sendSocket(ws, { type: 'processing', domain, requestId });
+
+        const cached = await findCachedResult(domain);
+        if (cached) {
+          sendSocket(ws, {
+            type: 'result',
+            domain,
+            requestId,
+            result: {
+              confidence: normalizeScore(cached.score),
+              reason: cached.reason || 'Loaded from cache',
+              cached: true
+            }
+          });
+          continue;
+        }
+
         const pageData = await renderPageHtml(domain);
         const aiResult = await analyzeRenderedHtmlWithOpenRouter(domain, pageData);
 
@@ -298,6 +349,7 @@ async function processQueue() {
 
         void saveResultRecord({
           domain,
+          pageKey: toPageKey(domain),
           score: normalizeScore(aiResult.confidence),
           reason: aiResult.reason,
           createdAt: new Date().toISOString()
