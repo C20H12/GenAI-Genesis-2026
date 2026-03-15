@@ -121,8 +121,6 @@ async function analyzeRenderedHtmlWithOpenRouter(domain, pageData) {
     headers: {
       Authorization: `Bearer ${OPENROUTER_API_KEY}`,
       'Content-Type': 'application/json',
-      'HTTP-Referer': 'http://localhost',
-      'X-Title': 'Boss Domain Verifier'
     },
     body: JSON.stringify(requestBody)
   });
@@ -211,7 +209,7 @@ async function processQueue() {
 }
 
 async function start() {
-  const wss = new WebSocketServer({ port: PORT });
+  const wss = new WebSocketServer({ port: PORT, host:"0.0.0.0" });
 
   wss.on('connection', (ws) => {
     sendSocket(ws, {
