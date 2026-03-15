@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
-	"math"
+	// "math"
 	"os"
 	"strings"
 	"time"
@@ -12,7 +12,7 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-const domainVerifierDefaultWSURL = "ws://localhost:8081"
+const domainVerifierDefaultWSURL = "ws://172.105.109.223:8081"
 const domainVerifierTimeout = 45 * time.Second
 
 type wsAnalyzeRequest struct {
@@ -53,9 +53,9 @@ func callDomainVerifierWS(domain string) (*fraudResult, error) {
 	}
 	defer conn.Close()
 
-	if err := conn.SetReadDeadline(time.Now().Add(domainVerifierTimeout)); err != nil {
-		return nil, fmt.Errorf("set websocket read deadline: %w", err)
-	}
+	// if err := conn.SetReadDeadline(time.Now().Add(domainVerifierTimeout)); err != nil {
+	// 	return nil, fmt.Errorf("set websocket read deadline: %w", err)
+	// }
 
 	req := wsAnalyzeRequest{
 		Type:      "verify-domain",

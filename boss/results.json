@@ -1,0 +1,32 @@
+[
+  {
+    "domain": "https://pornhub.com/",
+    "score": 0,
+    "reason": "This is the legitimate Pornhub website. The domain matches the well-known adult content platform, the content includes standard age verification, cookie notice, and typical site navigation. There are no signs of phishing, malware, scam attempts, credential theft, fake support, drive-by downloads, or impersonation. The site appears to be authentic and functions as expected for this type of service.",
+    "createdAt": "2026-03-15T08:24:52.014Z"
+  },
+  {
+    "domain": "https://fuu78.com/",
+    "score": 85,
+    "reason": "The website appears to be an adult video chat platform with typical characteristics of a scam or deceptive service. It promotes 'free video chat' but heavily emphasizes point-based payments for one-on-one and group sessions, with a conspicuous 'points recharge center'. There is a 'member consumption ranking' offering large 'free point' rewards, which is a common tactic to encourage excessive spending. The site also warns against third-party recharging, indicating potential payment security issues. The domain name is generic and not associated with a reputable brand. While not directly phishing for credentials, it exhibits multiple scam-like features including financial entrapment, lack of transparency, and potential for non-delivery of services.",
+    "createdAt": "2026-03-15T08:24:37.509Z"
+  },
+  {
+    "domain": "microsoft.com",
+    "score": 0,
+    "reason": "The page is the legitimate Microsoft homepage (microsoft.com) with proper branding, navigation, and content. It shows no signs of phishing, malware, scam, credential theft, fake support, drive-by downloads, or impersonation. The domain matches, the structure is consistent with Microsoft's official site, and there are no suspicious requests for credentials or downloads.",
+    "createdAt": "2026-03-15T08:24:11.977Z"
+  },
+  {
+    "domain": "github.com",
+    "score": 0,
+    "reason": "This is the legitimate GitHub.com homepage. The domain matches exactly, the content is consistent with GitHub's official branding, navigation structure, and features. There are no signs of phishing, malware, scam attempts, credential theft, fake support, drive-by downloads, or impersonation. The page appears to be the authentic GitHub website.",
+    "createdAt": "2026-03-15T08:23:56.556Z"
+  },
+  {
+    "domain": "example.com",
+    "score": 0,
+    "reason": "The domain is a well-known example domain used for documentation purposes, with no signs of malicious content, phishing, malware, or scams. The content is benign and matches the expected purpose of example.com.",
+    "createdAt": "2026-03-15T08:23:38.451Z"
+  }
+]
