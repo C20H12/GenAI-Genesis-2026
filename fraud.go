@@ -20,6 +20,24 @@ import (
 
 // ---- Database ----
 
+const PROMPT = `
+You are a fraud detection assistant.
+Analyze the following webpage text and determine if it is fraudulent.
+
+Analyze from the following aspects:
+- Does the content match the official domain?
+- Is the website gambling related?
+- Does it claim unrealistic financial returns?
+- Does it claim high user count, even it's unheard of?
+- Does it have obviously fake testimonials?
+
+To prevent false positive:
+- A less well known website does not mean it's a scam. Only classify as fraud if there are clear signs of fraud (as listed above).
+- A generic error (4xx, 5xx) / redirection / loading page does not mean it's a scam.
+
+Return a fraud score from 0 (not fraud) to 100 (definitely fraud) and a brief reason, in JSON.
+`
+
 var (
 	fraudDB   *sql.DB
 	fraudOnce sync.Once
@@ -163,10 +181,6 @@ func callFraudLLM(url, text string) (*fraudResult, error) {
 		return nil, fmt.Errorf("OPENROUTER_API_KEY not set")
 	}
 
-	fmt.Println("\n=========================")
-	fmt.Println(text)
-	fmt.Println("=========================")
-
 	// Truncate very long text to avoid excessive token usage
 	if len(text) > 8000 {
 		text = text[:8000]
@@ -177,7 +191,7 @@ func callFraudLLM(url, text string) (*fraudResult, error) {
 		Messages: []chatMessage{
 			{
 				Role:    "system",
-				Content: "You are a fraud detection assistant. Analyze the following webpage text and determine if it is fraudulent. Do not treat unreadable characters, encoding problems, broken text, or incomplete content as fraud evidence by themselves. If the text quality is poor, reduce confidence rather than assigning a high fraud score. Only use clear scam-related evidence found in the text. Return a fraud score from 0 (not fraud) to 100 (definitely fraud) and a brief reason, in JSON.",
+				Content: PROMPT,
 			},
 			{
 				Role:    "user",
@@ -254,6 +268,13 @@ func callFraudLLM(url, text string) (*fraudResult, error) {
 	if err := json.Unmarshal([]byte(completion.Choices[0].Message.Content), &result); err != nil {
 		return nil, fmt.Errorf("unmarshal fraud result: %w (raw: %s)", err, completion.Choices[0].Message.Content)
 	}
+
+	fmt.Println("\n=========================")
+	fmt.Println(text)
+	fmt.Println("=========================")
+	fmt.Println(result.Score)
+	fmt.Println(result.Reason)
+	fmt.Println("=========================")
 
 	return &result, nil
 }
