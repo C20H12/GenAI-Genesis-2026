@@ -23,12 +23,18 @@ import (
 const PROMPT = `
 You are a fraud detection assistant.
 Analyze the following webpage text and determine if it is fraudulent.
+
 Analyze from the following aspects:
 - Does the content match the official domain?
 - Is the website gambling related?
 - Does it claim unrealistic financial returns?
 - Does it claim high user count, even it's unheard of?
 - Does it have obviously fake testimonials?
+
+To prevent false positive:
+- A less well known website does not mean it's a scam. Only classify as fraud if there are clear signs of fraud (as listed above).
+- A generic error (4xx, 5xx) / redirection / loading page does not mean it's a scam.
+
 Return a fraud score from 0 (not fraud) to 100 (definitely fraud) and a brief reason, in JSON.
 `
 
