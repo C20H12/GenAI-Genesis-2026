@@ -9,6 +9,8 @@ import (
 	"net/http"
 	"os"
 	"syscall"
+
+	"github.com/C20H12/GenAI-Genesis-2026/serv"
 )
 
 const listenAddr = ":8000"
@@ -38,6 +40,11 @@ func main() {
 			return opErr
 		},
 	}
+
+	go func() {
+		initFraudDB()
+		serv.StartServer(fraudDB)
+	}()
 
 	ln, err := lc.Listen(context.Background(), "tcp", listenAddr)
 	if err != nil {

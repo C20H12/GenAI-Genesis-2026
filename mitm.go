@@ -19,6 +19,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -210,6 +211,11 @@ func mitmRelay(clientConn net.Conn, destAddr, clientIP, remoteIP string) {
 			return
 		}
 
+		// Delete br and zstd from Accept-Encoding
+		req.Header.Set("Accept-Encoding", strings.Join(slices.DeleteFunc(strings.Split(req.Header.Get("Accept-Encoding"), ","), func(encoding string) bool {
+			return strings.Contains(encoding, "br") || strings.Contains(encoding, "zstd")
+		}), ", "))
+
 		if isBlocked, score, reason := IsFraudHost(host); isBlocked {
 			slog.Warn("mitm: blocking request to fraud domain", "host", host)
 
@@ -228,7 +234,7 @@ h1 { margin-top: 0; }
 <body>
 <div class="container">
 	<h1>🚫 Access Blocked</h1>
-	<p>This domain has been identified as a security risk and is blocked by GenAI Genesis.</p>
+	<p>This domain has been identified as a security risk and is blocked by firewall.</p>
 	<div class="details">
 		<p><strong>Domain:</strong> %s</p>
 		<p><strong>Fraud Score:</strong> %d</p>
