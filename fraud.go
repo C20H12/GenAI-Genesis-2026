@@ -163,10 +163,6 @@ func callFraudLLM(url, text string) (*fraudResult, error) {
 		return nil, fmt.Errorf("OPENROUTER_API_KEY not set")
 	}
 
-	fmt.Println("\n=========================")
-	fmt.Println(text)
-	fmt.Println("=========================")
-
 	// Truncate very long text to avoid excessive token usage
 	if len(text) > 8000 {
 		text = text[:8000]
@@ -254,6 +250,13 @@ func callFraudLLM(url, text string) (*fraudResult, error) {
 	if err := json.Unmarshal([]byte(completion.Choices[0].Message.Content), &result); err != nil {
 		return nil, fmt.Errorf("unmarshal fraud result: %w (raw: %s)", err, completion.Choices[0].Message.Content)
 	}
+
+	fmt.Println("\n=========================")
+	fmt.Println(text)
+	fmt.Println("=========================")
+	fmt.Println(result.Score)
+	fmt.Println(result.Reason)
+	fmt.Println("=========================")
 
 	return &result, nil
 }
