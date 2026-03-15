@@ -1,7 +1,8 @@
 const fs = require('fs/promises');
 const path = require('path');
 const WebSocket = require('ws');
-
+const dotenv = require("dotenv");
+dotenv.config();
 const WS_URL = process.env.WS_URL || 'ws://localhost:8081';
 const TEST_FILE = process.env.TEST_FILE || path.join(__dirname, 'test-domains.json');
 const SEND_DELAY_MS = Number(process.env.SEND_DELAY_MS || 400);

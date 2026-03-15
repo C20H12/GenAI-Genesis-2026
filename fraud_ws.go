@@ -96,7 +96,7 @@ func callDomainVerifierWS(domain string) (*fraudResult, error) {
 				confidence = 1
 			}
 
-			score := int(math.Round(confidence * 100))
+			score := int(confidence)
 			if msg.Result.Malicious && score < 65 {
 				score = 65
 			}

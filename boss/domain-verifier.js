@@ -107,7 +107,7 @@ async function analyzeRenderedHtmlWithOpenRouter(domain, pageData) {
     messages: [
       {
         role: 'system',
-        content: 'You are a website safety analyst. Return only strict JSON with keys: confidence (0-100 number), reason (string).'
+        content: 'You are a website safety analyst. Return only strict JSON with keys: confidence (0-100 number) (higher = more like to be scam), reason (string).'
       },
       {
         role: 'user',
