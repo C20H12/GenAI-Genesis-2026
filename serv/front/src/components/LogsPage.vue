@@ -3,7 +3,6 @@ import { computed, onMounted, ref } from "vue";
 import Card from "primevue/card";
 import DataTable from "primevue/datatable";
 import Column from "primevue/column";
-import SelectButton from "primevue/selectbutton";
 import Tag from "primevue/tag";
 import InputText from "primevue/inputtext";
 import Textarea from "primevue/textarea";
@@ -12,7 +11,6 @@ import { fetchLogsData } from "../services/proxyApi";
 
 type LevelFilter = "OK" | "BLOCKED";
 
-const level = ref<LevelFilter>("OK");
 const query = ref("");
 const proxyLogs = ref<ProxyLog[]>([]);
 const selectedLogId = ref<number | null>(null);
@@ -30,21 +28,13 @@ onMounted(async () => {
   }
 });
 
-const levelOptions = [
-  { label: "All", value: "ALL" },
-  { label: "Info", value: "INFO" },
-  { label: "Warn", value: "WARN" },
-  { label: "Error", value: "ERROR" },
-];
-
 const filteredLogs = computed(() => {
   const term = query.value.trim().toLowerCase();
 
   return proxyLogs.value.filter(log => {
-    const levelMatch = level.value === "ALL" || log.level === level.value;
     const textMatch =
       !term || [log.timestamp, log.source, log.message, log.requestId].join(" ").toLowerCase().includes(term);
-    return levelMatch && textMatch;
+    return textMatch;
   });
 });
 
@@ -78,13 +68,6 @@ const formatTime = (t: string) => {
       <p v-else-if="isLoading">Loading logs...</p>
       <template v-else>
         <div class="table-toolbar table-toolbar-split">
-          <SelectButton
-            v-model="level"
-            :options="levelOptions"
-            optionLabel="label"
-            optionValue="value"
-            :allowEmpty="false"
-          />
           <InputText v-model="query" placeholder="Search logs..." />
         </div>
 
