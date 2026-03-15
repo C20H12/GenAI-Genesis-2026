@@ -13,6 +13,7 @@ const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
 const OPENROUTER_MODEL = process.env.OPENROUTER_MODEL || "deepseek/deepseek-v3.2";
 const MAX_HTML_CHARS = Number(process.env.MAX_HTML_CHARS || 100000);
 const RESULTS_FILE = path.join(__dirname, 'results.json');
+const SCREENSHOTS_DIR = path.join(__dirname, 'screenshots');
 const queue = [];
 const activeJobs = new Map();
 let resultsWriteQueue = Promise.resolve();
@@ -90,6 +91,13 @@ function normalizeScore(value) {
   }
 
   return Math.round(num);
+}
+
+function safeFileName(value) {
+  return String(value || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9.-]/g, '_')
+    .slice(0, 120);
 }
 
 function toPageKey(domainOrUrl) {
@@ -170,6 +178,9 @@ async function renderPageHtml(domain) {
     await page.goto(url, { waitUntil: 'networkidle2', timeout: 30000 });
     const finalUrl = page.url();
     const title = await page.title();
+    const screenshotFileName = `${safeFileName(domain)}-${Date.now()}.png`;
+    const screenshotFsPath = path.join(SCREENSHOTS_DIR, screenshotFileName);
+    await page.screenshot({ path: screenshotFsPath, fullPage: true });
     const pageBody = await page.evaluate(() => {
       const body = document.body;
       if (!body) {
@@ -190,6 +201,7 @@ async function renderPageHtml(domain) {
     return {
       finalUrl,
       title,
+      screenshotPath: `/screenshots/${screenshotFileName}`,
       bodyHtml: pageBody.bodyHtml,
       bodyText: pageBody.bodyText
     };
@@ -352,6 +364,7 @@ async function processQueue() {
           pageKey: toPageKey(domain),
           score: normalizeScore(aiResult.confidence),
           reason: aiResult.reason,
+          screenshotPath: pageData.screenshotPath,
           createdAt: new Date().toISOString()
         });
       } catch (error) {
@@ -372,6 +385,10 @@ async function processQueue() {
 
 async function start() {
   const app = express();
+
+  await fs.mkdir(SCREENSHOTS_DIR, { recursive: true });
+
+  app.use('/screenshots', express.static(SCREENSHOTS_DIR));
 
   app.get('/status', async (_req, res) => {
     res.json(await getDashboardState());
