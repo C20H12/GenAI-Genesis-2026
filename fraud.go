@@ -49,7 +49,7 @@ func initFraudDB() {
 
 		_, err = fraudDB.Exec(`CREATE TABLE IF NOT EXISTS blacklist (
 			id         INTEGER PRIMARY KEY AUTOINCREMENT,
-			domain     TEXT PRIMARY KEY,
+			domain     TEXT UNIQUE,
 			score      INTEGER,
 			reason     TEXT,
 			created_at DATETIME DEFAULT CURRENT_TIMESTAMP
