@@ -207,3 +207,20 @@ p {
     overflow-x: auto;
   }
 }
+
+
+.cell-link {
+  max-width: 100%;
+  border: none;
+  background: transparent;
+  color: inherit;
+  padding: 0;
+  text-align: left;
+  cursor: pointer;
+}
+
+.dialog-text {
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+}

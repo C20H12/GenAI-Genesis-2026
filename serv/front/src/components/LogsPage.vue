@@ -6,6 +6,7 @@ import Column from "primevue/column";
 import Tag from "primevue/tag";
 import InputText from "primevue/inputtext";
 import Textarea from "primevue/textarea";
+import Dialog from "primevue/dialog";
 import type { ProxyLog } from "../data/proxyData";
 import { fetchLogsData } from "../services/proxyApi";
 
@@ -16,6 +17,9 @@ const proxyLogs = ref<ProxyLog[]>([]);
 const selectedLogId = ref<number | null>(null);
 const isLoading = ref(true);
 const loadError = ref("");
+const isTextDialogOpen = ref(false);
+const textDialogTitle = ref("");
+const textDialogContent = ref("");
 
 onMounted(async () => {
   try {
@@ -57,6 +61,18 @@ const levelSeverity = (value: LevelFilter) => {
 const formatTime = (t: string) => {
   return new Date(t).toUTCString();
 };
+
+const truncateText = (value: string | undefined, max = 52) => {
+  if (!value) return "-";
+  if (value.length <= max) return value;
+  return `${value.slice(0, max)}...`;
+};
+
+const showFullText = (title: string, value: string | undefined) => {
+  textDialogTitle.value = title;
+  textDialogContent.value = value && value.trim() ? value : "-";
+  isTextDialogOpen.value = true;
+};
 </script>
 
 <template>
@@ -84,15 +100,37 @@ const formatTime = (t: string) => {
               {{ formatTime(slotProps.data.timestamp) }}
             </template>
           </Column>
-          <Column field="source" header="Source" />
-          <Column field="source" header="Source" />
-          <Column field="message" header="Message" />
+          <Column header="Source">
+            <template #body="slotProps">
+              <button class="cell-link" @click="showFullText('Source', slotProps.data.source)">
+                {{ truncateText(slotProps.data.source, 40) }}
+              </button>
+            </template>
+          </Column>
+          <Column header="Destination">
+            <template #body="slotProps">
+              <button class="cell-link" @click="showFullText('Destination', slotProps.data.destination)">
+                {{ truncateText(slotProps.data.destination, 40) }}
+              </button>
+            </template>
+          </Column>
+          <Column header="Message">
+            <template #body="slotProps">
+              <button class="cell-link" @click="showFullText('Message', slotProps.data.message)">
+                {{ truncateText(slotProps.data.message, 100) }}
+              </button>
+            </template>
+          </Column>
           <Column header="Level">
             <template #body="slotProps">
               <Tag :value="slotProps.data.level" :severity="levelSeverity(slotProps.data.level)" />
             </template>
           </Column>
         </DataTable>
+
+        <Dialog v-model:visible="isTextDialogOpen" :header="textDialogTitle" modal :style="{ width: 'min(36rem, 95vw)' }">
+          <p class="dialog-text">{{ textDialogContent }}</p>
+        </Dialog>
 
         <div class="raw-log">
           <h3>Raw Log Line</h3>
@@ -102,3 +140,4 @@ const formatTime = (t: string) => {
     </template>
   </Card>
 </template>
+
