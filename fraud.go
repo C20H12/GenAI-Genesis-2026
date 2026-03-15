@@ -20,6 +20,18 @@ import (
 
 // ---- Database ----
 
+const PROMPT = `
+You are a fraud detection assistant.
+Analyze the following webpage text and determine if it is fraudulent.
+Analyze from the following aspects:
+- Does the content match the official domain?
+- Is the website gambling related?
+- Does it claim unrealistic financial returns?
+- Does it claim high user count, even it's unheard of?
+- Does it have obviously fake testimonials?
+Return a fraud score from 0 (not fraud) to 100 (definitely fraud) and a brief reason, in JSON.
+`
+
 var (
 	fraudDB   *sql.DB
 	fraudOnce sync.Once
@@ -173,7 +185,7 @@ func callFraudLLM(url, text string) (*fraudResult, error) {
 		Messages: []chatMessage{
 			{
 				Role:    "system",
-				Content: "You are a fraud detection assistant. Analyze the following webpage text and determine if it is fraudulent. Do not treat unreadable characters, encoding problems, broken text, or incomplete content as fraud evidence by themselves. If the text quality is poor, reduce confidence rather than assigning a high fraud score. Only use clear scam-related evidence found in the text. Return a fraud score from 0 (not fraud) to 100 (definitely fraud) and a brief reason, in JSON.",
+				Content: PROMPT,
 			},
 			{
 				Role:    "user",
