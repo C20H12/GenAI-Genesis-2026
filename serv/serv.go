@@ -51,6 +51,7 @@ type proxyLog struct {
 	Timestamp string `json:"timestamp"`
 	Level     string `json:"level"`
 	Source    string `json:"source"`
+	Destination    string `json:"destination"`
 	Message   string `json:"message"`
 	RequestID string `json:"requestId"`
 }
@@ -377,6 +378,7 @@ func (s *server) handleLogs(w http.ResponseWriter, r *http.Request) {
 			writeError(w, http.StatusInternalServerError, err)
 			return
 		}
+		item.Destination = url
 		item.Level = logLevel(score)
 		item.RequestID = fmt.Sprintf("fraud-%d", item.ID)
 		if item.Message == "" {
